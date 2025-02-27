@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { FaPlay, FaPause, FaRedo, FaTrash, FaPlus } from "react-icons/fa";
-// up to date
+
 
 interface StopwatchProps {
   id: number;
