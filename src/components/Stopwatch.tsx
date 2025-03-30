@@ -1,52 +1,38 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { FaPlay, FaPause, FaRedo, FaTrash } from "react-icons/fa";
 import { formatTime } from "../shared/helpers/formatters";
+import useLocalStorage from "../shared/hooks/useLocalStorage";
 
 interface StopwatchProps {
   id: number;
   onDelete: (id: number) => void;
 }
 
-const Stopwatch: React.FC<StopwatchProps> = ({ id, onDelete }) => {
-  const [isRunning, setIsRunning] = useState<boolean>(() => {
-    const saved = localStorage.getItem(`stopwatch-running-${id}`);
-    return saved ? JSON.parse(saved) : false;
-  });
+const buttonStyles = "p-2 rounded-full transition-all duration-200";
 
-  const [time, setTime] = useState<number>(() => {
-    const saved = localStorage.getItem(`stopwatch-${id}`);
-    return saved ? JSON.parse(saved) : 0;
-  });
-  
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+const Stopwatch: React.FC<StopwatchProps> = memo(({ id, onDelete }) => {
+  const [isRunning, setIsRunning] = useLocalStorage<boolean>(
+    `stopwatch-running-${id}`,
+    false
+  );
+  const [time, setTime] = useLocalStorage<number>(`stopwatch-${id}`, 0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    if (isRunning) {
-      interval = setInterval(() => {
-        setTime((prevTime) => prevTime + 1);
-      }, 1000);
-    } else {
-      if (interval) clearInterval(interval);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isRunning]);
-
- 
-  useEffect(() => {
-    localStorage.setItem(`stopwatch-running-${id}`, JSON.stringify(isRunning));
-  }, [isRunning]);
- 
-  useEffect(() => {
-    localStorage.setItem(`stopwatch-${id}`, JSON.stringify(time));
-  }, [time]);
-
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setIsRunning(false);
     setTime(0);
-  };
+  }, [setIsRunning, setTime]);
+
+  useEffect(() => {
+    if (isRunning) {
+      intervalRef.current = setInterval(() => {
+        setTime((prev) => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isRunning, setTime]);
 
   return (
     <div className="group relative flex items-center justify-between bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200">
@@ -54,36 +40,35 @@ const Stopwatch: React.FC<StopwatchProps> = ({ id, onDelete }) => {
         {formatTime(time)}
       </span>
       <div className="flex space-x-3">
-        {!isRunning ? (
-          <button
-            onClick={() => setIsRunning(true)}
-            className="p-2 text-green-600 hover:bg-green-100 rounded-full transition-all duration-200"
-          >
-            <FaPlay className="w-5 h-5" />
-          </button>
-        ) : (
-          <button
-            onClick={() => setIsRunning(false)}
-            className="p-2 text-yellow-600 hover:bg-yellow-100 rounded-full transition-all duration-200"
-          >
+        <button
+          onClick={() => setIsRunning(!isRunning)}
+          className={`${buttonStyles} ${
+            isRunning
+              ? "text-yellow-600 hover:bg-yellow-100"
+              : "text-green-600 hover:bg-green-100"
+          }`}
+        >
+          {isRunning ? (
             <FaPause className="w-5 h-5" />
-          </button>
-        )}
+          ) : (
+            <FaPlay className="w-5 h-5" />
+          )}
+        </button>
         <button
           onClick={handleReset}
-          className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-all duration-200"
+          className={`${buttonStyles} text-blue-600 hover:bg-blue-100`}
         >
           <FaRedo className="w-5 h-5" />
         </button>
         <button
           onClick={() => onDelete(id)}
-          className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-all duration-200"
+          className={`${buttonStyles} text-red-600 hover:bg-red-100`}
         >
           <FaTrash className="w-5 h-5" />
         </button>
       </div>
     </div>
   );
-};
+});
 
 export default Stopwatch;
